@@ -1,7 +1,7 @@
 import vtk
 import numpy as np
 from vtk.util.vtkConstants import *
-
+import matplotlib.pyplot as plt
 
 from IPython.display import Image
 
@@ -164,24 +164,24 @@ def MakeAxes(point,length):
     return xpolyActor,ypolyActor,zpolyActor
 
 
-def RenderActors(actors):
+def RenderActors(actors,interactive=True,bgcolor=(1.,1,1)):
 	renderer=vtk.vtkRenderer()
 	for a in actors:
 		renderer.AddActor(a)
-	renderer.SetBackground(.3, .6, .3)
- 
-	renderWindow=vtk.vtkRenderWindow()
-	renderWindow.AddRenderer(renderer)
-	renderWindow.SetStereoTypeToRedBlue() #Anaglyphic FTW
- 
-	renderWindowInteractor=vtk.vtkRenderWindowInteractor()
-	renderWindowInteractor.SetRenderWindow(renderWindow)
- 
-	renderWindowInteractor.Start()
-
-	renderWindow.Finalize()
-	renderWindowInteractor.TerminateApp()
-	del renderWindow,renderWindowInteractor
+	renderer.SetBackground(bgcolor[0],bgcolor[1],bgcolor[2])
+ 	if interactive:
+		renderWindow=vtk.vtkRenderWindow()
+		renderWindow.AddRenderer(renderer)
+		renderWindow.SetStereoTypeToRedBlue() #Anaglyphic FTW
+	 
+		renderWindowInteractor=vtk.vtkRenderWindowInteractor()
+		renderWindowInteractor.SetRenderWindow(renderWindow)
+	 
+		renderWindowInteractor.Start()
+	
+		renderWindow.Finalize()
+		renderWindowInteractor.TerminateApp()
+		del renderWindow,renderWindowInteractor
         return renderer
 
 def MakePrimalGrid(img_data):
@@ -301,3 +301,81 @@ def MakeDualGrid(img_data):
 	dualPointActor.SetMapper(dualPointMapper)
 	return dualActor,dualPointActor
 
+
+def DrawQEFProblem(ax,cs,ps,ns):
+	corners=[(0.,0.),(0.,1.),(1.,0.),(1.,1.)]
+	A=[]
+	b=[]
+	for i in range(4):
+	    print "i:",ps[i][0]
+	    if not np.isnan(ps[i][0]):
+	        A.append(ns[i])
+	        b.append(np.dot(ns[i],ps[i]))
+	A=np.array(A)
+	b=np.array(b)
+	
+	q,res,rank,s=np.linalg.lstsq(A,b.T)
+	#print q
+	#print "res",res
+	#print "rank",rank
+	#print "s",s
+	#try: 
+	#    qq=np.dot(np.linalg.inv(A),b.T)
+	#    print qq
+	#except:
+	#    print "singular"
+	def map2axis(pin):
+	    return (2+pin[0]*6.,2+pin[1]*6.)
+	
+	def qef(x,y):
+	    q=0.0
+	    for i in range(4):
+	        if not np.isnan(ps[i][0]):
+	           v=(ps[i][0]-x,ps[i][1]-y)
+	           nv=ns[i][0]*v[0]+ns[i][1]*v[1]
+	           q=q+nv**2
+	    return q
+	   
+	
+	        
+	# quadratic error functions QEF
+	ax.axis("equal")
+	ax.set_xlim([0,10])
+	ax.set_ylim([0,10])
+	
+	x,y=np.meshgrid(np.linspace(0,1,20),np.linspace(0,1,20))
+	xqef=np.zeros_like(x)
+	yqef=np.zeros_like(y)
+	zqef=np.zeros_like(x)
+	for i in range(x.shape[0]):
+	    for j in range(x.shape[1]):
+	        xqef[i,j],yqef[i,j]=map2axis((x[i,j],y[i,j]))
+	        zqef[i,j]=qef(x[i,j],y[i,j])
+	
+	
+	plt.contour(xqef,yqef,zqef)
+	
+	
+	
+	ax.plot([1,9],[2,2],'b-')
+	ax.plot([2,2],[1,9],'b-')
+	ax.plot([1,9],[8,8],'b-')
+	ax.plot([8,8],[1,9],'b-')
+	
+	z=map2axis(q)
+	ax.plot(z[0],z[1],'ro')
+	
+	for i in range(4):
+	    #corners
+	    z1=map2axis(corners[i])
+	    ax.plot(z1[0],z1[1],'bo',markersize=10) if cs[i]>0 else ax.plot(z1[0],z1[1],marker='o',markersize=10, markerfacecolor='none') 
+	    ax.plot([q[0],])
+	#points
+	    z2=map2axis(ps[i])
+	    #ax.plot([z1[0],z2[0]],[z1[1],z2[1]],'k-')
+	    ax.plot(z2[0],z2[1],'ko')
+	    ax.arrow(z2[0],z2[1],ns[i][0],ns[i][1],head_width=0.25,head_length=0.5,ec='k',fc='k')
+	    if not np.isnan(z2[0]):
+	        ax.plot([z[0],z2[0]],[z[1],z2[1]],c='silver')
+	
+	
