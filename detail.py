@@ -307,7 +307,7 @@ def DrawQEFProblem(ax,cs,ps,ns):
 	A=[]
 	b=[]
 	for i in range(4):
-	    print "i:",ps[i][0]
+	    #print "i:",ps[i][0]
 	    if not np.isnan(ps[i][0]):
 	        A.append(ns[i])
 	        b.append(np.dot(ns[i],ps[i]))
